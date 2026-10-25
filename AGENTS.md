@@ -16,15 +16,14 @@ A **private, offline, local-first** personal app that tracks:
 | **Expenses** | Income/expense transactions, categories, monthly budgets, summaries |
 | **Health** | Weight, water, sleep, mood, exercise, plus user-defined metrics |
 | **Dashboard ("Today")** | One glance summary across all modules |
-| **Settings & Security** | Theme, currency, app lock (system lock or in-app PIN), backup/export |
+| **Settings & Security** | Theme, currency, app lock (system lock or in-app PIN), backup/export, user profile |
 
 Future modules (habits, notes/journal, goals, widgets, reports) must be addable **without
 rewriting existing code** (see §5 Extension model).
 
 **Hard product rules**
-1. **Fully offline.** The app must NOT declare the `INTERNET` permission. No analytics, ads, crash
-   SDKs, or remote config.
-2. **Data lives only on the device**, in app-private storage, stored neatly in a relational schema.
+1. **Local-first by default.** The app is primarily local and offline. However, users can opt-in to an online cloud sync mode in the future (e.g. Google Drive/Gmail sync). So the data layer must prepare for sync states, but works fully offline.
+2. **Data lives only on the device**, in app-private storage, stored neatly in a relational schema unless sync is enabled.
 3. **User-controlled export/import** at any time (encrypted backup, JSON, CSV).
 4. **Works on Android 10 (API 29) and newer** with identical core functionality.
 5. **Modern, fast, accessible UI** (Material 3, Jetpack Compose).
@@ -59,7 +58,7 @@ versions with the IDE's dependency tooling / official release notes — never gu
 | Async | Kotlin Coroutines + Flow | Inject dispatchers; no `GlobalScope` |
 | DI | **Hilt** with **KSP** | Use KSP, never kapt |
 | Database | **Room** (KSP) | Schema export ON, explicit migrations |
-| Preferences | **Jetpack DataStore (Preferences)** | Settings, lock config, onboarding flags |
+| Preferences | **Jetpack DataStore (Preferences)** | Settings, lock config, onboarding flags, user profile (Name, DoB, Sync Mode) |
 | Serialization | `kotlinx.serialization` (JSON) | Backups + nav routes |
 | Background work | **WorkManager** | Reminders re-scheduling, optional scheduled backup |
 | Crypto | **Android Keystore** (AES-256-GCM) + `javax.crypto` (PBKDF2WithHmacSHA256) | Do **not** use `androidx.security:security-crypto` (deprecated) |
@@ -166,6 +165,8 @@ flag **and** an existence check).
 
 Theme mode (system/light/dark), dynamic color on/off, currency code, first day of week, lock mode,
 auto-lock timeout, secure-screen flag, biometric-enabled flag, last backup time, onboarding done.
+User Profile: Full Name, Date of Birth, Sync Mode (Offline vs Online).
+Budget: Custom user-defined monthly budget in minor units.
 All reads are `Flow`; never block the main thread (the splash screen may hold until the first
 value loads via `setKeepOnScreenCondition`).
 
@@ -181,6 +182,7 @@ interface FeatureEntry {            // nav destination + bottom-bar/"More" item
     val route: Any; val labelRes: Int; val icon: ImageVector
 }
 interface DashboardContributor {    // a card on the Today screen
+    val order: Int
     @Composable fun Card(modifier: Modifier)
 }
 interface BackupContributor {       // participates in export / import
@@ -236,6 +238,7 @@ Key flows the app must support end-to-end:
   shapes from `MaterialTheme.shapes`, spacing from a 4 dp scale object. **No hard-coded colors or
   magic dp values** scattered in screens.
 - Rounded, calm, spacious layout; clear visual hierarchy; large touch targets (≥ 48 dp).
+- Bottom Navigation text must not wrap onto two lines. Set `maxLines = 1` and `overflow = TextOverflow.Ellipsis`.
 - Motion: subtle, purposeful (`animateContentSize`, `AnimatedVisibility`, list item placement
   animations). Honour the system "remove animations" setting.
 - Every list screen has: loading state, **empty state** (icon + helpful text + action), error
@@ -247,6 +250,7 @@ Key flows the app must support end-to-end:
 - Predictive back enabled (`android:enableOnBackInvokedCallback="true"`) with proper `BackHandler`s.
 - Forms keep their draft across rotation/process death (`rememberSaveable` / `SavedStateHandle`).
 - Number/currency/date formatting follows the device locale.
+- Navigation inside Dashboard ("Go to" buttons) must use `navigateToTopLevel` helper maintaining single-top state without trapping the back stack.
 
 ---
 
@@ -306,7 +310,7 @@ Key flows the app must support end-to-end:
 
 - `android:allowBackup="false"`; provide `dataExtractionRules` (API 31+) **and**
   `fullBackupContent` (API ≤ 30) that exclude everything.
-- No `INTERNET` permission. No exported components except `MainActivity` (launcher). Receivers
+- No `INTERNET` permission (Unless Online Sync is explicitly configured in future updates). No exported components except `MainActivity` (launcher). Receivers
   that are not needed externally must be `exported="false"`.
 - No storage permissions: all file I/O through the **Storage Access Framework**
   (`CreateDocument` / `OpenDocument` / `OpenDocumentTree`). No `requestLegacyExternalStorage`.
