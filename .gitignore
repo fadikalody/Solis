@@ -16,3 +16,37 @@ local.properties
 *.jks
 *.keystore
 keystore/
+
+# -------------------------------------------------------------------
+# SECURITY & CONFIDENTIAL EXCLUSIONS
+# -------------------------------------------------------------------
+
+# Keystore configurations & passwords
+key.properties
+signing.properties
+
+# API Keys & Local environment variables
+secrets.properties
+.env
+.env.*
+
+# Firebase & Google Cloud Credentials
+google-services.json
+GoogleService-Info.plist
+ServiceAccount.json
+play-store-credentials.json
+
+# Local Database test dumps
+*.db
+*.sqlite
+*.db-shm
+*.db-wal
+
+# -------------------------------------------------------------------
+# BUILD ARTIFACTS & CACHES
+# -------------------------------------------------------------------
+# Ignore all submodule build folders (not just the root /build)
+build/
+*.apk
+*.aab
+*.ap_
