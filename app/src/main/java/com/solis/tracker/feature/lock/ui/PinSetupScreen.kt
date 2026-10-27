@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PinSetupScreen(
     pinManager: PinManager,
+    viewModel: PinSetupViewModel,
     onBack: () -> Unit,
     onComplete: () -> Unit
 ) {
@@ -130,6 +131,9 @@ fun PinSetupScreen(
                                                 if (pin.contentEquals(confirmPin)) {
                                                     scope.launch {
                                                         pinManager.setPin(pin)
+                                                        android.util.Log.d("SolisLock", "PinSetupScreen: PIN saved")
+                                                        viewModel.onPinSetupComplete()
+                                                        android.util.Log.d("SolisLock", "PinSetupScreen: LockMode set, navigating back")
                                                         onComplete()
                                                     }
                                                 } else {
@@ -168,6 +172,9 @@ fun PinSetupScreen(
                                         if (pin.contentEquals(confirmPin)) {
                                             scope.launch {
                                                 pinManager.setPin(pin)
+                                                android.util.Log.d("SolisLock", "PinSetupScreen: PIN saved")
+                                                viewModel.onPinSetupComplete()
+                                                android.util.Log.d("SolisLock", "PinSetupScreen: LockMode set, navigating back")
                                                 onComplete()
                                             }
                                         } else {

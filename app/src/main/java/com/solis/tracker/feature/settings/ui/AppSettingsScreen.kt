@@ -80,7 +80,7 @@ fun AppSettingsScreen(
                 SettingsListItem(
                     title = "Security & Lock",
                     subtitle = "Manage PIN and Biometrics",
-                    onClick = { navController.navigate(PinSetupRoute) }
+                    onClick = { navController.navigate(com.solis.tracker.navigation.SecuritySettingsRoute) }
                 )
             }
             item {

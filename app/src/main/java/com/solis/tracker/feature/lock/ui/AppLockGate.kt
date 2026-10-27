@@ -1,9 +1,9 @@
 package com.solis.tracker.feature.lock.ui
 
-import android.view.WindowManager
+
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,31 +21,26 @@ fun AppLockGate(
 ) {
     val lockState by appLockManager.lockState.collectAsStateWithLifecycle()
     val lockMode by appLockManager.lockMode.collectAsStateWithLifecycle(initialValue = null)
-    val isSecureScreenEnabled by appLockManager.isSecureScreenEnabled.collectAsStateWithLifecycle(initialValue = null)
 
     val activity = LocalActivity.current
 
-    LaunchedEffect(lockState, isSecureScreenEnabled) {
-        if (activity != null) {
-            val shouldBeSecure = lockState == AppLockState.LOCKED || (isSecureScreenEnabled?.isSecureScreenEnabled == true)
-            if (shouldBeSecure) {
-                activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            } else {
-                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            }
-        }
+    // Don't wait for lockMode to load if we are already explicitly UNLOCKED
+    if (lockState == AppLockState.UNLOCKED) {
+        content()
+        return
     }
 
-    if (lockState == AppLockState.UNLOCKED || lockMode == null || isSecureScreenEnabled == null) {
-        content()
-    } else {
-        LockScreen(
-            appLockManager = appLockManager,
-            pinManager = pinManager,
-            biometricHelper = biometricHelper,
-            activity = activity as FragmentActivity,
-            lockMode = lockMode!!.lockMode,
-            isBiometricEnabled = isSecureScreenEnabled!!.isBiometricEnabled
-        )
+    // If we are LOCKED, wait for the actual lockMode before showing LockScreen
+    if (lockMode == null) {
+        return
     }
+
+    LockScreen(
+        appLockManager = appLockManager,
+        pinManager = pinManager,
+        biometricHelper = biometricHelper,
+        activity = activity as FragmentActivity,
+        lockMode = lockMode!!.lockMode,
+        isBiometricEnabled = lockMode!!.isBiometricEnabled
+    )
 }

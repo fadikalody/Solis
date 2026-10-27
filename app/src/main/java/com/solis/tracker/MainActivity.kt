@@ -6,6 +6,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.solis.tracker.core.designsystem.theme.SolisTheme
 import com.solis.tracker.core.security.AppLockManager
 import com.solis.tracker.core.security.BiometricHelper
@@ -22,9 +24,19 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var biometricHelper: BiometricHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         
+        var isReady = false
+        lifecycleScope.launch {
+            android.util.Log.d("SolisLock", "MainActivity: Waiting for AppLockManager to initialize...")
+            appLockManager.initializeLockState()
+            android.util.Log.d("SolisLock", "MainActivity: AppLockManager initialized, splash screen can dismiss")
+            isReady = true
+        }
+
+        splashScreen.setKeepOnScreenCondition { !isReady }
+
         appLockManager.initialize(ProcessLifecycleOwner.get().lifecycle)
         
         enableEdgeToEdge()

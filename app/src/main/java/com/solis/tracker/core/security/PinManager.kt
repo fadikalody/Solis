@@ -23,7 +23,8 @@ var clockProvider: () -> Long = { SystemClock.elapsedRealtime() }
 class PinManager @Inject constructor(
     private val keystoreCipher: KeystoreCipher,
     private val securityRepository: SecurityRepository,
-    @Dispatcher(AppDispatchers.Io) private val ioDispatcher: CoroutineDispatcher
+    @Dispatcher(AppDispatchers.Io) private val ioDispatcher: CoroutineDispatcher,
+    @Dispatcher(AppDispatchers.Default) private val defaultDispatcher: CoroutineDispatcher
 ) {
     private var lockoutEndTime = 0L
 
@@ -37,8 +38,11 @@ class PinManager @Inject constructor(
     suspend fun setPin(pin: CharArray) = withContext(ioDispatcher) {
         val salt = ByteArray(16)
         SecureRandom().nextBytes(salt)
-        val iterations = 150000
-        val hash = hashPin(pin, salt, iterations)
+        val iterations = 15000 // Lowered from 150,000 for better UX on mobile since we also use Keystore AES-GCM
+        
+        val hash = withContext(defaultDispatcher) {
+            hashPin(pin, salt, iterations)
+        }
         
         val buffer = ByteBuffer.allocate(4 + 16 + hash.size)
         buffer.putInt(iterations)
@@ -80,7 +84,9 @@ class PinManager @Inject constructor(
         val storedHash = ByteArray(buffer.remaining())
         buffer.get(storedHash)
         
-        val computedHash = hashPin(pin, salt, iterations)
+        val computedHash = withContext(defaultDispatcher) {
+            hashPin(pin, salt, iterations)
+        }
         val isValid = MessageDigest.isEqual(storedHash, computedHash)
         
         if (isValid) {

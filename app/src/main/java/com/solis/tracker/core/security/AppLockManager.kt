@@ -26,10 +26,11 @@ enum class AppLockState {
 class AppLockManager @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val pinManager: PinManager,
-    @Dispatcher(AppDispatchers.Main) private val mainDispatcher: CoroutineDispatcher
+    @Dispatcher(AppDispatchers.Main) private val mainDispatcher: CoroutineDispatcher,
+    @Dispatcher(AppDispatchers.Io) private val ioDispatcher: CoroutineDispatcher
 ) : DefaultLifecycleObserver {
 
-    private val _lockState = MutableStateFlow(AppLockState.UNLOCKED)
+    private val _lockState = MutableStateFlow(AppLockState.LOCKED)
     val lockState: StateFlow<AppLockState> = _lockState.asStateFlow()
 
     val lockMode = settingsRepository.userSettings
@@ -40,17 +41,23 @@ class AppLockManager @Inject constructor(
 
     private var appBackgroundedTime: Long = 0L
 
-    fun initialize(processLifecycle: Lifecycle) {
-        processLifecycle.addObserver(this)
-        
-        CoroutineScope(mainDispatcher).launch {
+    suspend fun initializeLockState() {
+        android.util.Log.d("SolisLock", "AppLockManager: initializeLockState() called")
+        kotlinx.coroutines.withContext(ioDispatcher) {
             pinManager.initializeLockoutState()
-            
             val settings = settingsRepository.userSettings.first()
-            if (settings.lockMode != LockMode.OFF) {
+            if (settings.lockMode == LockMode.OFF) {
+                android.util.Log.d("SolisLock", "AppLockManager: LockMode is OFF, unlocking app")
+                _lockState.value = AppLockState.UNLOCKED
+            } else {
+                android.util.Log.d("SolisLock", "AppLockManager: LockMode is ${settings.lockMode}, staying locked")
                 _lockState.value = AppLockState.LOCKED
             }
         }
+    }
+
+    fun initialize(processLifecycle: Lifecycle) {
+        processLifecycle.addObserver(this)
     }
 
     override fun onStart(owner: LifecycleOwner) {
@@ -63,9 +70,13 @@ class AppLockManager @Inject constructor(
             val settings = settingsRepository.userSettings.first()
             val timeoutMs = settings.autoLockTimeoutSeconds * 1000L
             
+            android.util.Log.d("SolisLock", "AppLockManager onStart: backgroundDuration=$backgroundDuration ms, timeout=$timeoutMs ms")
             if (settings.lockMode != LockMode.OFF && !authInProgress && !externalFlowInProgress) {
                 if (backgroundDuration >= timeoutMs) {
+                    android.util.Log.d("SolisLock", "AppLockManager onStart: backgroundDuration exceeded timeout, locking app")
                     _lockState.value = AppLockState.LOCKED
+                } else {
+                    android.util.Log.d("SolisLock", "AppLockManager onStart: within timeout, staying unlocked")
                 }
             }
         }
@@ -74,6 +85,9 @@ class AppLockManager @Inject constructor(
     override fun onStop(owner: LifecycleOwner) {
         if (!authInProgress && !externalFlowInProgress) {
             appBackgroundedTime = clockProvider()
+            android.util.Log.d("SolisLock", "AppLockManager onStop: app backgrounded at $appBackgroundedTime")
+        } else {
+            android.util.Log.d("SolisLock", "AppLockManager onStop: authInProgress or externalFlowInProgress, skipping background timer")
         }
     }
 

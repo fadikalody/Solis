@@ -127,4 +127,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setMonthlyBudgetMinor(amount: Long) {
         dataStore.edit { it[Keys.MONTHLY_BUDGET_MINOR] = amount }
     }
+
+    suspend fun setBiometricEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.BIOMETRIC_ENABLED] = enabled }
+    }
+
+    suspend fun setIsSecureScreenEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.SECURE_SCREEN] = enabled }
+    }
 }

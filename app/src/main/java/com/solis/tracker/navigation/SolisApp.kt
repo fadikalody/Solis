@@ -100,8 +100,14 @@ fun SolisApp(
                     val pinViewModel: PinSetupViewModel = hiltViewModel()
                     PinSetupScreen(
                         pinManager = pinViewModel.pinManager,
+                        viewModel = pinViewModel,
                         onBack = { navController.popBackStack() },
                         onComplete = { navController.popBackStack() }
+                    )
+                }
+                composable<SecuritySettingsRoute> {
+                    com.solis.tracker.feature.settings.ui.SecuritySettingsScreen(
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable<ProfileRoute> {

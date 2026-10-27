@@ -21,6 +21,9 @@ object MoreRoute
 object PinSetupRoute
 
 @Serializable
+object SecuritySettingsRoute
+
+@Serializable
 object ProfileRoute
 
 @Serializable
